@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState } from "react"
 
 export default function HomePage() {
-  // ⚠️ Replace with actual session later
+  //  session later
   const [isLoggedIn] = useState(false)
 
   return (
