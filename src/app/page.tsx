@@ -72,7 +72,7 @@ export default function HomePage() {
         <p className="text-lg text-gray-500 max-w-xl mx-auto mb-8">
           FitLog is your personal fitness tracker for logging runs, analyzing progress, and visualizing performance.
         </p>
-        <Link href="/signup">
+        <Link href="/dashboard">
           <Button className="text-lg px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow">
             Start Tracking Now
           </Button>
