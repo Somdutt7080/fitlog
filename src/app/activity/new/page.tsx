@@ -1,4 +1,3 @@
-// File: app/activity/new/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -12,12 +11,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { CalendarIcon, MapIcon, TimerIcon, FootprintsIcon } from "lucide-react";
+} from "@/components/ui/select";
+import { CalendarIcon, TimerIcon, FootprintsIcon } from "lucide-react";
 import { calculatePace } from "@/lib/utils";
 import dynamic from "next/dynamic";
 
-const MapUploader = dynamic(() => import("@/components/ui/map"), { ssr: false });
+const MapDrawer = dynamic(() => import("@/components/ui/map"), { ssr: false });
 
 export default function NewActivityPage() {
   const [type, setType] = useState("Run");
@@ -26,10 +25,20 @@ export default function NewActivityPage() {
   const [date, setDate] = useState("");
   const [notes, setNotes] = useState("");
   const [pace, setPace] = useState("0:00");
+  const [route, setRoute] = useState<[number, number][]>([]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert("Activity submitted! (backend not connected yet)");
+    console.log("Activity Data:", {
+      type,
+      distance,
+      duration,
+      date,
+      notes,
+      pace,
+      route,
+    });
+    alert("✅ Activity Submitted! (backend baad me)");
   };
 
   const handleDistanceChange = (val: number) => {
@@ -48,19 +57,18 @@ export default function NewActivityPage() {
         <h2 className="text-2xl font-bold text-blue-700 mb-6">Add New Activity</h2>
         <form onSubmit={handleSubmit} className="grid gap-4">
           <div>
-  <Label>Activity Type</Label>
-  <Select value={type} onValueChange={setType}>
-    <SelectTrigger className="w-full">
-    <SelectValue placeholder="Select activity type" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="Run">Run</SelectItem>
-      <SelectItem value="Walk">Walk</SelectItem>
-      <SelectItem value="Ride">Ride</SelectItem>
-    </SelectContent>
-  </Select>
-</div>
-
+            <Label>Activity Type</Label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select activity type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Run">Run</SelectItem>
+                <SelectItem value="Walk">Walk</SelectItem>
+                <SelectItem value="Ride">Ride</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -107,10 +115,11 @@ export default function NewActivityPage() {
           </div>
 
           <div>
-            <Label>Route (Upload or Draw)</Label>
-            <div className="border rounded-xl p-4 bg-gray-50">
-              <MapUploader />
-            </div>
+            <Label>Draw Your Route</Label>
+            <MapDrawer onRouteDrawn={(coords) => setRoute(coords)} />
+            {route.length > 0 && (
+              <p className="mt-2 text-sm text-green-700">✅ Route captured with {route.length} points</p>
+            )}
           </div>
 
           <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-700 mt-4">
