@@ -1,11 +1,43 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Icons } from "@/components/ui/icons";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
 
 export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const router = useRouter();
+
+  const handleLogin = async () => {
+    const res = await signIn("credentials", {
+      redirect: false,
+      email,
+      password,
+    });
+
+    if (res?.ok) {
+      router.push("/dashboard");
+    } else {
+      setError("Invalid credentials");
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
       <Card className="w-full max-w-md border-0 shadow-lg rounded-xl overflow-hidden bg-white">
@@ -28,17 +60,23 @@ export default function LoginPage() {
               </svg>
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-center text-gray-800">Welcome to FitLog</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center text-gray-800">
+            Welcome to FitLog
+          </CardTitle>
           <CardDescription className="text-center text-gray-500">
             Track your fitness journey with precision
           </CardDescription>
         </CardHeader>
+
         <CardContent className="p-8 pt-0 space-y-4">
-          <Button variant="outline" className="w-full h-11 border-gray-300 hover:bg-gray-50">
+          <Button
+            variant="outline"
+            className="w-full h-11 border-gray-300 hover:bg-gray-50"
+          >
             <Icons.google className="mr-2 h-4 w-4 text-blue-600" />
             <span className="text-gray-700">Sign in with Google</span>
           </Button>
-          
+
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-gray-300" />
@@ -49,35 +87,49 @@ export default function LoginPage() {
               </span>
             </div>
           </div>
-          
+
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-gray-700">Email</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                placeholder="m@example.com" 
+              <Label htmlFor="email" className="text-gray-700">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="m@example.com"
                 className="h-11 focus-visible:ring-blue-500 border-gray-300"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-gray-700">Password</Label>
-              <Input 
-                id="password" 
-                type="password" 
+              <Label htmlFor="password" className="text-gray-700">
+                Password
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="h-11 focus-visible:ring-blue-500 border-gray-300"
               />
             </div>
+            {error && (
+              <p className="text-sm text-red-500 font-medium">{error}</p>
+            )}
           </div>
         </CardContent>
         <CardFooter className="p-8 pt-0 flex flex-col">
-          <Button className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium">
+          <Button
+            className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium"
+            onClick={handleLogin}
+          >
             Sign In
           </Button>
           <p className="mt-4 text-center text-sm text-gray-600">
-            Don't have an account?{" "}
-            <Link 
-              href="/signup" 
+            Don&apos;t have an account? {" "}
+            <Link
+              href="/signup"
               className="font-semibold text-blue-600 hover:text-blue-700 hover:underline"
             >
               Sign up
@@ -86,5 +138,5 @@ export default function LoginPage() {
         </CardFooter>
       </Card>
     </div>
-  )
+  );
 }

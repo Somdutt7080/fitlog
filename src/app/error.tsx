@@ -19,7 +19,7 @@ export default function GlobalError({
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-blue-50 to-purple-50 px-6">
       <div className="bg-white rounded-2xl shadow-xl p-8 max-w-2xl w-full text-center space-y-6 border border-blue-100">
-        {/* Optional Lottie Animation */}
+        
     
 
         <h1 className="text-3xl font-bold text-blue-700 flex justify-center items-center gap-2">
