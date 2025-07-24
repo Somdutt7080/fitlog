@@ -27,8 +27,8 @@ function MapLogic({ onRouteDrawn }: MapDrawerProps) {
         marker: false,
         polyline: {
           shapeOptions: {
-            color: "#3b82f6",
-            weight: 4,
+            color: "#e00126ff",
+            weight: 9,
           },
         },
       },
@@ -41,10 +41,17 @@ function MapLogic({ onRouteDrawn }: MapDrawerProps) {
 
     map.on(L.Draw.Event.CREATED, (e: any) => {
       const layer = e.layer;
+
+      // Clear previous layers (only one route allowed)
       drawnItems.clearLayers();
       drawnItems.addLayer(layer);
 
-      const latlngs = layer.getLatLngs()[0].map((p: any) => [p.lat, p.lng]);
+      // ✅ FIXED: For polylines, getLatLngs() returns a flat array
+      const latlngs: [number, number][] = layer
+        .getLatLngs()
+        .map((point: L.LatLng) => [point.lat, point.lng]);
+
+      console.log("✅ Route drawn:", latlngs);
       onRouteDrawn?.(latlngs);
     });
 
@@ -61,7 +68,7 @@ export default function MapDrawer({ onRouteDrawn }: MapDrawerProps) {
   return (
     <div className="h-64 w-full rounded-xl overflow-hidden">
       <MapContainer
-        center={[28.6139, 77.209]}
+        center={[28.6139, 77.209]} // Default to New Delhi
         zoom={13}
         style={{ height: "100%", width: "100%" }}
       >
@@ -71,6 +78,11 @@ export default function MapDrawer({ onRouteDrawn }: MapDrawerProps) {
         />
         <MapLogic onRouteDrawn={onRouteDrawn} />
       </MapContainer>
+
+      {/* Optional helper text for user */}
+      <p className="text-xs text-gray-500 mt-2">
+        ✍️ Click on the map to draw your route. Double-click or press <kbd>Esc</kbd> to finish.
+      </p>
     </div>
   );
 }

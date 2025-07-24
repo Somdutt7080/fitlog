@@ -6,46 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import dynamic from "next/dynamic";
+import { routesData, Route } from "@/lib/data/dummyData";
 
 const MapDisplay = dynamic(() => import("@/components/ui/map-display"), {
-  ssr: false, // 👈 disables server-side rendering
+  ssr: false,
 });
 
-type Route = {
-  id: number;
-  name: string;
-  type: string;
-  date: string;
-  position: [number, number];
-};
-
-// Mock data
-const routesData: Route[] = [
-  {
-    id: 1,
-    name: "Morning Run",
-    type: "Run",
-    date: "2025-07-15",
-    position: [28.6139, 77.2090],
-  },
-  {
-    id: 2,
-    name: "Evening Walk",
-    type: "Walk",
-    date: "2025-07-10",
-    position: [28.62, 77.21],
-  },
-  {
-    id: 3,
-    name: "Ride to Park",
-    type: "Ride",
-    date: "2025-07-08",
-    position: [28.61, 77.22],
-  },
-];
-
 export default function MapViewPage() {
-  const [selectedType, setSelectedType] = useState("run");
+  const [selectedType, setSelectedType] = useState("Run");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -73,7 +41,6 @@ export default function MapViewPage() {
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  {/* <SelectItem value="">All</SelectItem> */}
                   <SelectItem value="Run">Run</SelectItem>
                   <SelectItem value="Walk">Walk</SelectItem>
                   <SelectItem value="Ride">Ride</SelectItem>

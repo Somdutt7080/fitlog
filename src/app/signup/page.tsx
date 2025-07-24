@@ -1,9 +1,16 @@
+"use client";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Icons } from "@/components/ui/icons";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import Link from "next/link";
 import {
   Select,
@@ -12,10 +19,44 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import axios from "axios";
+
 
 export default function SignupPage() {
+  const router = useRouter();
+  const [formData, setFormData] = useState({
+    fullName: "",
+    email: "",
+    password: "",
+    dateOfBirth: "",
+    gender: "",
+  });
+  const [error, setError] = useState("");
+
+  const handleChange = (e: any) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleGenderChange = (value: string) => {
+    setFormData({ ...formData, gender: value });
+  };
+
+  const handleSubmit = async () => {
+    setError("");
+    try {
+      const res = await axios.post("api/auth/register", formData);
+      if (res.status === 201) {
+        router.push("/login");
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Something went wrong");
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
+   <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
       <Card className="w-full max-w-md border-0 shadow-xl rounded-2xl overflow-hidden bg-white bg-opacity-90 backdrop-blur-sm">
         <CardHeader className="p-8 pb-6">
           <div className="flex justify-center mb-4">
@@ -44,22 +85,15 @@ export default function SignupPage() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="p-8 pt-0 space-y-4">
-          <Button
-            variant="outline"
-            className="w-full h-11 border-gray-300 hover:bg-gray-50/50 transition-all duration-300"
-          >
-            <Icons.google className="mr-2 h-4 w-4 text-blue-600" />
-            <span className="text-gray-700">Continue with Google</span>
-          </Button>
 
+        <CardContent className="p-8 pt-0 space-y-4">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-gray-200" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-white px-2 text-gray-400">
-                Or register with email
+                Register with email
               </span>
             </div>
           </div>
@@ -68,7 +102,9 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Label className="text-gray-700">Full Name</Label>
               <Input
-                className="h-11 focus-visible:ring-blue-500 border-gray-300 rounded-lg transition-all duration-300 hover:border-blue-300"
+                name="fullName"
+                value={formData.fullName}
+                onChange={handleChange}
                 placeholder="Somdutt Sharma"
                 required
               />
@@ -77,8 +113,10 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Label className="text-gray-700">Email</Label>
               <Input
+                name="email"
                 type="email"
-                className="h-11 focus-visible:ring-blue-500 border-gray-300 rounded-lg transition-all duration-300 hover:border-blue-300"
+                value={formData.email}
+                onChange={handleChange}
                 placeholder="m@example.com"
                 required
               />
@@ -87,18 +125,20 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Label className="text-gray-700">Password</Label>
               <Input
+                name="password"
                 type="password"
-                className="h-11 focus-visible:ring-blue-500 border-gray-300 rounded-lg transition-all duration-300 hover:border-blue-300"
+                value={formData.password}
+                onChange={handleChange}
                 required
-                minLength={6}
               />
             </div>
 
             <div className="space-y-2">
               <Label className="text-gray-700">Confirm Password</Label>
               <Input
+                name="confirmPassword"
                 type="password"
-                className="h-11 focus-visible:ring-blue-500 border-gray-300 rounded-lg transition-all duration-300 hover:border-blue-300"
+                onChange={handleChange}
                 required
               />
             </div>
@@ -106,8 +146,10 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Label className="text-gray-700">Date of Birth</Label>
               <Input
+                name="dateOfBirth"
                 type="date"
-                className="h-11 focus-visible:ring-blue-500 border-gray-300 rounded-lg transition-all duration-300 hover:border-blue-300"
+                value={formData.dateOfBirth}
+                onChange={handleChange}
                 required
                 max={new Date().toISOString().split("T")[0]}
               />
@@ -115,39 +157,34 @@ export default function SignupPage() {
 
             <div className="space-y-2">
               <Label className="text-gray-700">Gender</Label>
-              <Select required>
-                <SelectTrigger className="h-11 focus:ring-blue-500 border-gray-300 rounded-lg transition-all duration-300 hover:border-blue-300">
+              <Select required onValueChange={handleGenderChange}>
+                <SelectTrigger className="h-11">
                   <SelectValue placeholder="Select gender" />
                 </SelectTrigger>
-                <SelectContent className="rounded-lg border-gray-200 shadow-lg">
-                  <SelectItem value="male" className="hover:bg-gray-50 focus:bg-blue-50">
-                    Male
-                  </SelectItem>
-                  <SelectItem value="female" className="hover:bg-gray-50 focus:bg-blue-50">
-                    Female
-                  </SelectItem>
-                  <SelectItem value="other" className="hover:bg-gray-50 focus:bg-blue-50">
-                    Other
-                  </SelectItem>
-                  <SelectItem value="prefer-not-to-say" className="hover:bg-gray-50 focus:bg-blue-50">
+                <SelectContent>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="prefer-not-to-say">
                     Prefer not to say
                   </SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {error && (
+              <p className="text-red-500 text-sm text-center">{error}</p>
+            )}
           </div>
         </CardContent>
 
         <CardFooter className="p-8 pt-0 flex flex-col">
-          <Button className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
+          <Button onClick={handleSubmit} className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
             Create Account
           </Button>
           <p className="mt-4 text-center text-sm text-gray-500">
-            Already have an account?{" "}
-            <Link
-              href="/login"
-              className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors duration-300"
-            >
+            Already have an account?{' '}
+            <Link href="/login" className="font-semibold text-blue-600 hover:underline">
               Sign in
             </Link>
           </p>

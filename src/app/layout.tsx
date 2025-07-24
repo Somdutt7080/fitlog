@@ -1,5 +1,7 @@
-import type { Metadata } from "next";
+"use client"; // 👈 Yeh zaruri hai
+
 import "./globals.css";
+import { SessionProvider } from "next-auth/react"; // 👈 Yeh import karna hai
 
 
 export default function RootLayout({
@@ -10,7 +12,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        {children}
+        <SessionProvider> 
+          {children}
+        </SessionProvider>
       </body>
     </html>
   );
