@@ -25,7 +25,7 @@ import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 import { Home, PlusCircle, BarChart3, Map, X } from "lucide-react";
-import NewActivityPage from "@/app/activity/new/page";
+import NewActivityClient from "@/app/activity/new/NewActivityClient";
 import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react";
 
@@ -204,7 +204,7 @@ export default function Dashboard() {
       </div>
 
       {/* Form */}
-      <NewActivityPage isModal />
+      <NewActivityClient isModal />
     </div>
   </div>
 )}
