@@ -1,3 +1,4 @@
+// app/fitlog/analytics/page.tsx
 "use client";
 
 import {
@@ -20,9 +21,47 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-import { caloriesData, paceData, statTable } from "@/lib/data/dummyData"; // ✅ imported
+import ActivityStore from "@/store/activityStore";
+import { useMemo } from "react";
 
 export default function AnalyticsPage() {
+  const { activities } = ActivityStore();
+
+  // 🧠 Generate weekly stats (Sun-Sat)
+  const weeklyStats = useMemo(() => {
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    const stats = dayNames.map((day) => ({
+      day,
+      distance: 0,
+      duration: 0,
+      calories: 0,
+      pace: 0,
+      count: 0,
+    }));
+
+    activities.forEach((activity: { date: string | number | Date; distance: number; duration: number; pace: string; }) => {
+      const date = new Date(activity.date);
+      const dayIdx = date.getDay();
+      const entry = stats[dayIdx];
+
+      entry.distance += activity.distance;
+      entry.duration += activity.duration;
+      entry.calories += Math.round(activity.distance * 60); // estimate
+      const paceNum = parseFloat(activity.pace?.split(" ")[0]) || 0;
+      entry.pace += paceNum;
+      entry.count += 1;
+    });
+
+    return stats.map((entry) => ({
+      day: entry.day,
+      distance: entry.distance.toFixed(1),
+      duration: entry.duration,
+      calories: entry.calories,
+      pace: entry.count > 0 ? (entry.pace / entry.count).toFixed(1) : "0.0",
+    }));
+  }, [activities]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-blue-50 to-purple-50 p-8">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -37,12 +76,29 @@ export default function AnalyticsPage() {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={caloriesData}>
+                <BarChart data={weeklyStats}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="day" />
                   <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="calories" fill="#8884d8" />
+                  <Tooltip
+                  contentStyle={{
+                    backgroundColor: "white",
+                    borderRadius: "10px",
+                    border: "1px solid #e5e7eb",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+                  }}
+                  labelStyle={{ fontWeight: "bold", color: "#4b5563" }}
+                  itemStyle={{ color: "#16a34a" }}
+                  cursor={{ fill: "transparent" }}
+                />
+                <Bar
+                  dataKey="distance"
+                  fill="#8884d8"
+                  barSize={19}
+                  radius={[6, 6, 0, 0]}
+                  activeBar={{ fill: "#ec21fbff" }}
+                  background={{ fill: "transparent" }}
+                />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -66,7 +122,7 @@ export default function AnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {statTable.map((row, idx) => (
+                  {weeklyStats.map((row, idx) => (
                     <tr
                       key={idx}
                       className={idx % 2 === 0 ? "bg-white" : "bg-blue-50"}
@@ -92,7 +148,7 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={paceData}>
+              <LineChart data={weeklyStats}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="day" />
                 <YAxis unit=" min/km" />
