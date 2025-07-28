@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import FullScreenLoader from "@/components/ui/FullScreenLoading";
 import {
   Card,
   CardContent,
@@ -22,23 +23,48 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleLogin = async () => {
-    const res = await signIn("credentials", {
-      redirect: false,
-      email,
-      password,
-    });
+  setIsLoading(true);
+  setError("");
 
-    if (res?.ok) {
-      router.push("/dashboard");
-    } else {
-      setError("Invalid credentials");
+  const res = await signIn("credentials", {
+    redirect: false,
+    email,
+    password,
+  });
+
+  if (res?.ok) {
+    try {
+      // ⏳ Give session time to sync
+      setTimeout(async () => {
+        const sessionRes = await fetch("/api/auth/session");
+        const session = await sessionRes.json();
+
+        const role = session?.user?.role;
+
+        if (role === "admin") {
+          router.push("/Admin");
+        } else {
+          router.push("/fitlog/dashboard");
+        }
+      }, 500);
+    } catch (error) {
+      console.error("Session fetch failed:", error);
+      router.push("/fitlog/dashboard"); // fallback
     }
-  };
+  } else {
+    setIsLoading(false);
+    setError("Invalid credentials");
+  }
+};
+
 
   return (
+    <>
+    {isLoading && <FullScreenLoader />}
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
       <Card className="w-full max-w-md border-0 shadow-lg rounded-xl overflow-hidden bg-white">
         <CardHeader className="space-y-1 p-8 pb-6">
@@ -138,5 +164,6 @@ export default function LoginPage() {
         </CardFooter>
       </Card>
     </div>
+    </>
   );
 }
