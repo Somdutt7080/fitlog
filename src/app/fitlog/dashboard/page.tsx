@@ -29,7 +29,6 @@ import { useEffect, useState } from "react";
 import { PlusCircle, X } from "lucide-react";
 import NewActivityPage from "@/components/NewActivity";
 import { useSession, signOut } from "next-auth/react";
-import { toast } from "sonner";
 import ConfirmCloseModal from "@/components/ConfirmCloseModal";
 
 export default function Dashboard() {
@@ -212,10 +211,10 @@ const [formDirty, setFormDirty] = useState(false);
         Add Your Activity
       </div>
       <NewActivityPage
-        isModal
+        isModal= {true}
         onSuccess={() => {
-          setFormDirty(false);
-          setShowModal(false);
+        setFormDirty(false);
+        setShowModal(false);
         }}
         onDirtyChange={(dirty) => setFormDirty(dirty)}
       />
