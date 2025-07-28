@@ -3,6 +3,9 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import FullScreenLoader from "@/components/ui/FullScreenLoading";
+
+
 import {
   Card,
   CardContent,
@@ -26,6 +29,7 @@ import axios from "axios";
 
 export default function SignupPage() {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -45,17 +49,29 @@ export default function SignupPage() {
 
   const handleSubmit = async () => {
     setError("");
-    try {
-      const res = await axios.post("api/auth/register", formData);
-      if (res.status === 201) {
-        router.push("/login");
-      }
-    } catch (err: any) {
-      setError(err?.response?.data?.message || "Something went wrong");
+    setIsLoading(true); 
+     try {
+    // 👇 Map frontend field 'dateOfBirth' → backend 'dob'
+    const payload = {
+      ...formData,
+      dob: formData.dateOfBirth,
+    };
+
+    const res = await axios.post("/api/auth/register", payload); // 👈 Add leading slash
+
+    if (res.status === 201) {
+      router.push("/login");
     }
+  } catch (err: any) {
+    setError(err?.response?.data?.message || "Something went wrong");
+  } finally {
+    setIsLoading(false);
+  }
   };
 
   return (
+    <>
+    {isLoading && <FullScreenLoader />}
    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
       <Card className="w-full max-w-md border-0 shadow-xl rounded-2xl overflow-hidden bg-white bg-opacity-90 backdrop-blur-sm">
         <CardHeader className="p-8 pb-6">
@@ -191,5 +207,6 @@ export default function SignupPage() {
         </CardFooter>
       </Card>
     </div>
+    </>
   );
 }
