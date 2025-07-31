@@ -27,9 +27,13 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useEffect, useState } from "react";
 import { PlusCircle, X } from "lucide-react";
-import NewActivityPage from "@/components/NewActivity";
 import { useSession, signOut } from "next-auth/react";
 import ConfirmCloseModal from "@/components/ConfirmCloseModal";
+import dynamic from "next/dynamic";
+import type { NewActivityPageProps } from "@/types/activity";
+const NewActivityPage = dynamic(() => import("@/components/NewActivity"), {
+  ssr: false,
+}) as unknown as React.FC<NewActivityPageProps>;
 
 export default function Dashboard() {
   
@@ -89,10 +93,10 @@ const [formDirty, setFormDirty] = useState(false);
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-3xl font-bold text-blue-700">Welcome back, {session.user?.name}!</h2>
         <div className="flex gap-4">
-          <Button onClick={() => setShowModal(true)} className="bg-blue-600 text-white hover:bg-blue-700">
+          <Button onClick={() => setShowModal(true)} className="bg-blue-600 text-white hover:bg-blue-700 cursor-pointer">
             <PlusCircle className="w-4 h-4 mr-2" /> Add Activity
           </Button>
-          <Button variant="outline" onClick={() => signOut({ callbackUrl: "/login" })}>
+          <Button variant="outline" onClick={() => signOut({ callbackUrl: "/login" })} className="cursor-pointer">
             Logout
           </Button>
         </div>
@@ -190,7 +194,7 @@ const [formDirty, setFormDirty] = useState(false);
           Ready to log your next activity?
         </CardTitle>
         <CardContent className="mt-4">
-          <Button onClick={() => setShowModal(true)} className="bg-blue-600 text-white hover:bg-blue-700">
+          <Button onClick={() => setShowModal(true)} className="bg-blue-600 text-white hover:bg-blue-700 cursor-pointer">
             Add New Run
           </Button>
           
@@ -203,8 +207,7 @@ const [formDirty, setFormDirty] = useState(false);
     <div className="relative bg-white w-full max-w-4xl rounded-lg shadow-lg scale-95 animate-fadeInUp">
       <button
         onClick={tryCloseModal}
-        className="absolute top-2 right-2 text-gray-500 hover:text-black"
-      >
+        className="absolute top-2 right-2 text-gray-500 hover:text-black" >
         <X className="w-5 h-5" />
       </button>
       <div className="text-2xl font-semibold text-blue-700 px-6 pt-4 pb-4">

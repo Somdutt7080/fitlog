@@ -36,6 +36,8 @@ export default function NewActivityPage({ isModal = false, onSuccess, onDirtyCha
   const [pace, setPace] = useState("0.00");
   const [route, setRoute] = useState<[number, number][]>([]);
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
   const distanceNum = parseFloat(distance);
   const durationNum = parseFloat(duration);
 
@@ -46,6 +48,9 @@ export default function NewActivityPage({ isModal = false, onSuccess, onDirtyCha
     !isNaN(durationNum) &&
     distanceNum > 0 &&
     durationNum > 0 &&
+    distanceNum <= 200 &&
+    durationNum <= 480 &&
+    (!notes || notes.trim().split(/\s+/).length <= 100) &&
     route.length > 0;
 
   const isDirty =
@@ -67,56 +72,75 @@ export default function NewActivityPage({ isModal = false, onSuccess, onDirtyCha
     setNotes("");
     setPace("0:00");
     setRoute([]);
+    setFieldErrors({});
   };
 
- const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!isFormValid) return;
-
-  const activityData = {
-    type,
-    distance: distanceNum,
-    duration: durationNum,
-    date,
-    notes,
-    pace,
-    route,
+  const validateDistance = (value: string) => {
+    const num = parseFloat(value);
+    if (isNaN(num) || num <= 0) return "Distance must be greater than 0";
+    if (num > 200) return "Distance must be less than or equal to 200 km";
+    return "";
   };
 
-  try {
-    const res = await fetch("/api/activity", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(activityData),
-    });
+  const validateDuration = (value: string) => {
+    const num = parseFloat(value);
+    if (isNaN(num) || num <= 0) return "Duration must be greater than 0";
+    if (num > 480) return "Duration must be 480 minutes (8 hours) or less";
+    return "";
+  };
 
-    const result = await res.json();
+  const validateNotes = (value: string) => {
+    const words = value.trim().split(/\s+/);
+    if (words.length > 100) return "Notes must be 100 words or fewer";
+    return "";
+  };
 
-    if (!res.ok) {
-      const errorMsg = result.error || "";
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isFormValid) return;
 
-      // ✅ New toast messages based on updated backend
-      if (errorMsg.includes("only log today's activity")) {
-        toast.error("You can only log today's activity.");
-      } else if (errorMsg.includes("max limit of 3 activities")) {
-        toast.error("You've already added 3 activities today.");
-      } else if (errorMsg.includes("already logged an activity in this time block")) {
-        toast.error("You've already added an activity in this 8-hour time block. Try again later.");
-      } else {
-        toast.error("Failed to save activity: " + errorMsg);
+    const activityData = {
+      type,
+      distance: distanceNum,
+      duration: durationNum,
+      date,
+      notes,
+      pace,
+      route,
+    };
+
+    try {
+      const res = await fetch("/api/activity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(activityData),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        const errorMsg = result.error || "";
+
+        if (errorMsg.includes("only log today's activity")) {
+          toast.error("You can only log today's activity.");
+        } else if (errorMsg.includes("max limit of 3 activities")) {
+          toast.error("You've already added 3 activities today.");
+        } else if (errorMsg.includes("already logged an activity in this time block")) {
+          toast.error("You've already added an activity in this 8-hour time block. Try again later.");
+        } else {
+          toast.error("Failed to save activity: " + errorMsg);
+        }
+        return;
       }
-      return;
+
+      resetForm();
+      toast.success("Activity added successfully!");
+      onSuccess?.();
+    } catch (err) {
+      console.error(err);
+      toast.error("❌ Something went wrong while saving.");
     }
-
-    resetForm();
-    toast.success("Activity added successfully!");
-    onSuccess?.();
-  } catch (err) {
-    console.error(err);
-    toast.error("❌ Something went wrong while saving.");
-  }
-};
-
+  };
 
   return (
     <div className={isModal ? "" : "min-h-screen p-8 bg-gradient-to-br from-white via-blue-50 to-purple-50"}>
@@ -150,11 +174,14 @@ export default function NewActivityPage({ isModal = false, onSuccess, onDirtyCha
                 onChange={(e) => {
                   const val = e.target.value;
                   setDistance(val);
+                  const err = validateDistance(val);
+                  setFieldErrors((prev) => ({ ...prev, distance: err }));
                   const d = parseFloat(val);
                   const t = parseFloat(duration);
                   if (!isNaN(d) && !isNaN(t)) setPace(calculatePace(d, t));
                 }}
               />
+              {fieldErrors.distance && <p className="text-sm text-red-500 mt-1">{fieldErrors.distance}</p>}
             </div>
             <div>
               <Label>Duration (min)</Label>
@@ -166,11 +193,14 @@ export default function NewActivityPage({ isModal = false, onSuccess, onDirtyCha
                 onChange={(e) => {
                   const val = e.target.value;
                   setDuration(val);
+                  const err = validateDuration(val);
+                  setFieldErrors((prev) => ({ ...prev, duration: err }));
                   const d = parseFloat(distance);
                   const t = parseFloat(val);
                   if (!isNaN(d) && !isNaN(t)) setPace(calculatePace(d, t));
                 }}
               />
+              {fieldErrors.duration && <p className="text-sm text-red-500 mt-1">{fieldErrors.duration}</p>}
             </div>
           </div>
 
@@ -181,7 +211,17 @@ export default function NewActivityPage({ isModal = false, onSuccess, onDirtyCha
 
           <div>
             <Label>Optional Notes</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <Textarea
+            className="resize-y overflow-auto min-h-[100px]"
+              value={notes}
+              onChange={(e) => {
+                const val = e.target.value;
+                setNotes(val);
+                const err = validateNotes(val);
+                setFieldErrors((prev) => ({ ...prev, notes: err }));
+              }}
+            />
+            {fieldErrors.notes && <p className="text-sm text-red-500 mt-1">{fieldErrors.notes}</p>}
           </div>
 
           <div>
