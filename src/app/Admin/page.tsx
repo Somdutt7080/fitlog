@@ -121,14 +121,14 @@ export default function AdminPage() {
        <div className="sticky top-0 z-10 bg-white py-4 mb-6 flex items-center justify-between border-b">
   <h1 className="text-3xl font-bold px-2">Admin Panel</h1>
   <div className="flex gap-2 px-2">
-    <button className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-md text-sm hover:bg-gray-800">
+    {/* <button className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-md text-sm hover:bg-gray-800">
       <FilePlus className="w-4 h-4" />
       Add Activity
     </button>
     <button className="flex items-center gap-2 bg-gray-100 text-gray-800 px-4 py-2 rounded-md text-sm hover:bg-gray-200">
       <Upload className="w-4 h-4" />
       Export Data
-    </button>
+    </button> */}
     <button className="flex items-center gap-2 bg-gray-100 text-gray-800 px-4 py-2 rounded-md text-sm hover:bg-gray-200">
       <User2 className="w-4 h-4" />
       Logout

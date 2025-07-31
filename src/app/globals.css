@@ -124,3 +124,96 @@
     @apply bg-background text-foreground;
   }
 }
+.swiper-pagination-bullet { background: rgba(255,255,255,0.5); opacity: 1; }
+.swiper-pagination-bullet-active { background: #fff; }
+
+.swiper-pagination-bullet {
+  background: rgba(255,255,255,0.4);
+  width: 10px; height: 10px;
+  opacity: 1;
+}
+.swiper-pagination-bullet-active {
+  background: #fff;
+}
+
+@keyframes pulse-slow {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.9; }
+}
+.animate-pulse-slow { animation: pulse-slow 3s ease-in-out infinite; }
+
+/* Premium Nav Link */
+.nav-link {
+  position: relative;
+  display: inline-block;
+  font-weight: 500;
+  color: #fff;
+  transition: color 0.3s ease;
+  cursor: pointer;
+}
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  height: 2px;
+  width: 0%;
+  background: linear-gradient(to right, #06b6d4, #ec4899, #8b5cf6);
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+.nav-link:hover {
+  color: #06b6d4;
+}
+.nav-link:hover::after {
+  width: 100%;
+}
+
+@keyframes logo-spin {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(45deg) scale(1.1); }
+}
+.animate-logo-spin {
+  animation: logo-spin 3s ease-in-out infinite;
+}
+
+/* Animated gradient line */
+@keyframes gradient-move {
+  0% { background-position: 0% 50% }
+  100% { background-position: 200% 50% }
+}
+.animate-gradient-move {
+  animation: gradient-move 6s linear infinite;
+}
+
+/* Reuse logo animation from header (agar already add kiya hai to skip) */
+@keyframes logo-spin {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(10deg) scale(1.08); }
+}
+.animate-logo-spin {
+  animation: logo-spin 4s ease-in-out infinite;
+}
+
+/* Social/Link styles */
+.footer-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
+}
+.footer-icon:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.12);
+  box-shadow: 0 10px 30px rgba(236,72,153,0.25), 0 0 0 1px rgba(255,255,255,0.12) inset;
+}
+
+.footer-link {
+  transition: color .25s ease, opacity .25s ease;
+}
+.footer-link:hover {
+  color: #22d3ee; /* cyan-400 */
+  opacity: 1;
+}

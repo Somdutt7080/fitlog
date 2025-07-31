@@ -1,6 +1,6 @@
 import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
-import { UserModel } from "@/app/models/user";
+import { UserModel , } from "@/app/models/user";
 import { dbConnect } from "@/lib/dbConnect";
 import type { AuthOptions } from "next-auth";
 
@@ -12,23 +12,30 @@ export const authOptions: AuthOptions = {
         email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
-        await dbConnect();
+     async authorize(credentials) {
+  await dbConnect();
 
-        const user = await UserModel.findOne({ email: credentials?.email });
+  const email = credentials?.email?.toLowerCase().trim();
+  const password = credentials?.password ?? "";
 
-        if (!user) throw new Error("Invalid email");
+  if (!email || !password) throw new Error("Email and password are required");
 
-        const isValid = await compare(credentials!.password, user.password);
-        if (!isValid) throw new Error("Invalid password");
+  // 👇 सिर्फ ये line बदली है (type cast)
+  const user = (await UserModel.findOne({ email }));
 
-        return {
-          id: user._id.toString(),
-          email: user.email,
-          name: user.fullName,
-          role: user.role, // ✅ include role
-        };
-      },
+  if (!user) throw new Error("Invalid email");
+
+  const ok = await compare(password, user.password);
+  if (!ok) throw new Error("Invalid password");
+
+  return {
+    id: user._id.toString(),
+    email: user.email,
+    name: user.fullName,
+    role: user.role ?? "user",
+  };
+}
+
     }),
   ],
   pages: {
