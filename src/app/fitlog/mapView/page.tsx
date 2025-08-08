@@ -35,22 +35,22 @@ export default function MapViewPage() {
   }, [activities]);
 
   return (
-    <div className="p-6">
+   <div className="bg-gradient-to-br from-[#050505] via-[#0b0b0f] to-[#1c0d21] min-h-screen p-6 text-white">
       {/* Title */}
-      <div className="flex items-center gap-2 mb-6">
-        <MapPin className="w-6 h-6 text-blue-500" />
-        <h1 className="text-3xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+      <div className="flex items-center gap-3 mb-6">
+        <MapPin className="w-6 h-6 text-cyan-400 drop-shadow-glow" />
+        <h1 className="text-4xl font-extrabold bg-gradient-to-r from-cyan-400 to-pink-500 text-transparent bg-clip-text drop-shadow-md">
           Map View
         </h1>
       </div>
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded-xl shadow-md mb-6">
+      <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-5 shadow-lg mb-8">
         <Filters onFilter={handleFilter} />
       </div>
 
-      {/* Map */}
-      <div className="bg-white p-2 rounded-xl shadow-md">
+      {/* Map Container */}
+      <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl shadow-xl overflow-hidden h-[600px] ring-1 ring-white/10">
         <MapView activities={filteredActivities} />
       </div>
     </div>

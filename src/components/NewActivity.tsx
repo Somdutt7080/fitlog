@@ -1,14 +1,12 @@
-// ✅ FILE: fitlog-app/src/components/NewActivity.tsx
-
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-
+import LiveMapTracker from "@/components/ui/map";
 import {
   Select,
   SelectContent,
@@ -16,10 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { calculatePace } from "@/lib/utils";
-import dynamic from "next/dynamic";
-
-const MapDrawer = dynamic(() => import("@/components/ui/map"), { ssr: false });
+import clsx from "clsx";
 
 interface NewActivityPageProps {
   isModal?: boolean;
@@ -27,88 +22,217 @@ interface NewActivityPageProps {
   onDirtyChange?: (dirty: boolean) => void;
 }
 
-export default function NewActivityPage({ isModal = false, onSuccess, onDirtyChange }: NewActivityPageProps) {
+// Haversine utility
+function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+export default function NewActivityPage({
+  isModal = false,
+  onSuccess,
+  onDirtyChange,
+}: NewActivityPageProps) {
   const [type, setType] = useState("Run");
-  const [distance, setDistance] = useState("");
-  const [duration, setDuration] = useState("");
+  const [distance, setDistance] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [date, setDate] = useState("");
   const [notes, setNotes] = useState("");
-  const [pace, setPace] = useState("0.00");
+  const [pace, setPace] = useState("0:00");
   const [route, setRoute] = useState<[number, number][]>([]);
+  const [steps, setSteps] = useState(0);
+  const [calories, setCalories] = useState(0);
+  const [isTracking, setIsTracking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [startTime, setStartTime] = useState<Date | null>(null);
+  const [hasLocationPermission, setHasLocationPermission] = useState<boolean | null>(null);
 
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const distanceNum = parseFloat(distance);
-  const durationNum = parseFloat(duration);
+  const lastCoords = useRef<[number, number] | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const elapsedBeforePause = useRef(0);
 
-  const isFormValid =
-    type &&
-    date &&
-    !isNaN(distanceNum) &&
-    !isNaN(durationNum) &&
-    distanceNum > 0 &&
-    durationNum > 0 &&
-    distanceNum <= 200 &&
-    durationNum <= 480 &&
-    (!notes || notes.trim().split(/\s+/).length <= 100) &&
-    route.length > 0;
+  const isFormValid = type && distance > 0 && duration > 0 && route.length > 0;
+  const isDirty = distance > 0 || duration > 0 || notes !== "" || route.length > 0;
 
-  const isDirty =
-    distance !== "" ||
-    duration !== "" ||
-    date !== "" ||
-    notes !== "" ||
-    route.length > 0;
+  useEffect(() => {
+  if (!("geolocation" in navigator)) {
+    setHasLocationPermission(false);
+    toast.error("❌ Your browser does not support GPS.");
+    return;
+  }
+
+  // Ask browser for permission state
+  navigator.permissions?.query({ name: "geolocation" as PermissionName })
+    .then((result) => {
+      if (result.state === "granted") {
+        setHasLocationPermission(true);
+      } else if (result.state === "denied") {
+        setHasLocationPermission(false);
+        toast.error("❌ Location permission denied. Enable it in your browser settings.");
+      } else {
+        // state is "prompt" (first-time)
+        setHasLocationPermission(true); // allow start and handle errors later
+      }
+    }).catch(() => {
+      setHasLocationPermission(false);
+      toast.error("❌ Failed to check location permission.");
+    });
+}, []);
+
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
+  const updatePace = (duration: number, distance: number) => {
+  if (distance > 0.01 && duration > 0) {
+    const paceInMin = (duration / 60) / distance;
+    const mins = Math.floor(paceInMin);
+    const secs = Math.round((paceInMin - mins) * 60);
+    setPace(`${mins}:${secs < 10 ? "0" + secs : secs}`);
+  } else {
+    setPace("0:00");
+  }
+};
+
+
+useEffect(() => {
+  if (isTracking && !isPaused) {
+    intervalRef.current = setInterval(() => {
+      setDuration((prevDuration) => {
+        const updated = prevDuration + 1;
+        updatePace(updated, distance); // ✅ only this call
+       
+        return updated;
+      });
+    }, 1000);
+  }
+
+  return () => {
+    clearInterval(intervalRef.current!);
+  };
+}, [isTracking, isPaused, distance]);
+
+
+
+
   const resetForm = () => {
     setType("Run");
-    setDistance("");
-    setDuration("");
+    setDistance(0);
+    setDuration(0);
     setDate("");
     setNotes("");
     setPace("0:00");
     setRoute([]);
-    setFieldErrors({});
+    setSteps(0);
+    setCalories(0);
+    setStartTime(null);
+    setIsPaused(false);
+    setIsTracking(false);
+    setIsSubmitting(false);
+    elapsedBeforePause.current = 0;
+    lastCoords.current = null;
+    if (intervalRef.current) clearInterval(intervalRef.current);
   };
 
-  const validateDistance = (value: string) => {
-    const num = parseFloat(value);
-    if (isNaN(num) || num <= 0) return "Distance must be greater than 0";
-    if (num > 200) return "Distance must be less than or equal to 200 km";
-    return "";
-  };
+  useEffect(() => {
+    let watchId: number;
+    const MIN_DISTANCE_THRESHOLD_KM = 0.005;
+    const STEP_CONVERSION = 1312.3;
+    const CALORIES_PER_KM = 60;
 
-  const validateDuration = (value: string) => {
-    const num = parseFloat(value);
-    if (isNaN(num) || num <= 0) return "Duration must be greater than 0";
-    if (num > 480) return "Duration must be 480 minutes (8 hours) or less";
-    return "";
-  };
+    if (isTracking && !isPaused && "geolocation" in navigator) {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude, longitude, accuracy } = pos.coords;
+          if (accuracy > 50) return;
 
-  const validateNotes = (value: string) => {
-    const words = value.trim().split(/\s+/);
-    if (words.length > 100) return "Notes must be 100 words or fewer";
-    return "";
-  };
+          if (!lastCoords.current) {
+            lastCoords.current = [latitude, longitude];
+            setRoute((prev) => [...prev, [latitude, longitude]]);
+            return;
+          }
+
+          const dist = getDistanceFromLatLonInKm(
+            lastCoords.current[0],
+            lastCoords.current[1],
+            latitude,
+            longitude
+          );
+
+          if (dist < MIN_DISTANCE_THRESHOLD_KM) return;
+
+          setDistance((prev) => {
+          const newDistance = parseFloat((prev + dist).toFixed(4));
+          return newDistance;
+          });
+
+          setSteps((prev) => prev + Math.floor(dist * STEP_CONVERSION));
+          setCalories?.((prev) => Math.floor(prev + dist * CALORIES_PER_KM));
+
+          setRoute((prev) => [...prev, [latitude, longitude]]);
+          lastCoords.current = [latitude, longitude];
+        },
+       (err) => {
+  console.error("WatchPosition error:", err);
+  if (err.code === 1) {
+    toast.error("❌ GPS permission denied.");
+    setHasLocationPermission(false);
+  } else if (err.code === 2) {
+    toast.error("📡 Lost GPS signal.");
+  } else if (err.code === 3) {
+    toast.error("⌛ GPS timeout.");
+  } else {
+    toast.error("⚠️ GPS error occurred.");
+  }
+},
+
+        { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+      );
+    }
+
+    return () => {
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+    };
+  }, [isTracking, isPaused]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormValid) return;
+     console.log("handleSubmit triggered");
+      setIsTracking(false);
+  setIsPaused(false);
 
+  console.log("✅ Step 1: before validity check");
+    if (!isFormValid || isSubmitting) 
+      return;
+    setIsSubmitting(true);
+    
+    if (distance === 0 || duration === 0 || steps === 0 || route.length === 0) {
+    toast.error("❌ Invalid activity. Please move around and try again.");
+    return;
+  }
     const activityData = {
       type,
-      distance: distanceNum,
-      duration: durationNum,
+      distance,
+      duration,
       date,
       notes,
       pace,
+      steps,
+      calories,
       route,
     };
-
+    console.log("📦 Data being sent:", activityData); 
     try {
       const res = await fetch("/api/activity", {
         method: "POST",
@@ -117,24 +241,15 @@ export default function NewActivityPage({ isModal = false, onSuccess, onDirtyCha
       });
 
       const result = await res.json();
-
+      console.log("API response:", result); 
       if (!res.ok) {
-        const errorMsg = result.error || "";
-
-        if (errorMsg.includes("only log today's activity")) {
-          toast.error("You can only log today's activity.");
-        } else if (errorMsg.includes("max limit of 3 activities")) {
-          toast.error("You've already added 3 activities today.");
-        } else if (errorMsg.includes("already logged an activity in this time block")) {
-          toast.error("You've already added an activity in this 8-hour time block. Try again later.");
-        } else {
-          toast.error("Failed to save activity: " + errorMsg);
-        }
+        toast.error("Failed to save activity: " + (result.error || ""));
+        setIsSubmitting(false);
         return;
       }
 
       resetForm();
-      toast.success("Activity added successfully!");
+      toast.success("✅ Activity added successfully!");
       onSuccess?.();
     } catch (err) {
       console.error(err);
@@ -143,19 +258,22 @@ export default function NewActivityPage({ isModal = false, onSuccess, onDirtyCha
   };
 
   return (
-    <div className={isModal ? "" : "min-h-screen p-8 bg-gradient-to-br from-white via-blue-50 to-purple-50"}>
-      <div className={isModal ? "" : "max-w-3xl mx-auto bg-white p-6 rounded-xl shadow-md"}>
-        {!isModal && (
-          <h2 className="text-2xl font-bold text-blue-700 mb-6">Add New Activity</h2>
-        )}
-        <form onSubmit={handleSubmit} className="grid gap-4 p-4">
+    <div className={clsx(
+      isModal ? "" : "min-h-screen p-6 flex items-center justify-center",
+      "bg-gradient-to-br from-black via-[#0b0b0f] to-[#1c0d21] text-white"
+    )}>
+      <div className={clsx(
+        "w-full p-6",
+        isModal ? "bg-white/5 backdrop-blur-xl shadow-xl" : "bg-white text-black"
+      )}>
+        <form onSubmit={handleSubmit} className="grid gap-5">
           <div>
-            <Label>Activity Type</Label>
-            <Select value={type} onValueChange={(val) => setType(val)}>
-              <SelectTrigger className="w-full">
+            <Label className="text-white font-medium">Activity Type</Label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger className="bg-white/10 border border-white/20 text-white">
                 <SelectValue placeholder="Select activity type" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-[#1e1e2e] text-white">
                 <SelectItem value="Run">Run</SelectItem>
                 <SelectItem value="Walk">Walk</SelectItem>
                 <SelectItem value="Ride">Ride</SelectItem>
@@ -165,87 +283,152 @@ export default function NewActivityPage({ isModal = false, onSuccess, onDirtyCha
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Distance (km)</Label>
-              <Input
-                type="number"
-                min={0}
-                value={distance}
-                placeholder="0"
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setDistance(val);
-                  const err = validateDistance(val);
-                  setFieldErrors((prev) => ({ ...prev, distance: err }));
-                  const d = parseFloat(val);
-                  const t = parseFloat(duration);
-                  if (!isNaN(d) && !isNaN(t)) setPace(calculatePace(d, t));
-                }}
-              />
-              {fieldErrors.distance && <p className="text-sm text-red-500 mt-1">{fieldErrors.distance}</p>}
+              <Label className="text-white font-medium">Distance (km)</Label>
+              <Input readOnly value={distance.toFixed(2)} className="bg-white/10 border text-white" />
             </div>
             <div>
-              <Label>Duration (min)</Label>
-              <Input
-                type="number"
-                min={0}
-                value={duration}
-                placeholder="0"
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setDuration(val);
-                  const err = validateDuration(val);
-                  setFieldErrors((prev) => ({ ...prev, duration: err }));
-                  const d = parseFloat(distance);
-                  const t = parseFloat(val);
-                  if (!isNaN(d) && !isNaN(t)) setPace(calculatePace(d, t));
-                }}
-              />
-              {fieldErrors.duration && <p className="text-sm text-red-500 mt-1">{fieldErrors.duration}</p>}
+              <Label className="text-white font-medium">Duration (min)</Label>
+              <Input readOnly value={(duration / 60).toFixed(1)} className="bg-white/10 border text-white" />
             </div>
           </div>
 
           <div>
-            <Label>Date</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </div>
-
-          <div>
-            <Label>Optional Notes</Label>
-            <Textarea
-            className="resize-y overflow-auto min-h-[100px]"
-              value={notes}
-              onChange={(e) => {
-                const val = e.target.value;
-                setNotes(val);
-                const err = validateNotes(val);
-                setFieldErrors((prev) => ({ ...prev, notes: err }));
-              }}
+            <Label className="text-white font-medium">Date</Label>
+            <input
+              type="text"
+              readOnly
+              value={date ? new Date(date).toLocaleString("en-IN", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              }) : ""}
+              className="bg-white/10 border text-white w-full px-3 py-2 rounded"
             />
-            {fieldErrors.notes && <p className="text-sm text-red-500 mt-1">{fieldErrors.notes}</p>}
           </div>
 
           <div>
-            <Label className="text-sm text-gray-600">Pace (auto calculated)</Label>
-            <p className="text-blue-700 font-semibold text-lg">{pace}</p>
+            <Label className="text-white font-medium">Optional Notes</Label>
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="bg-white/10 border text-white" />
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 mt-4">
+            <div>
+              <Label className="text-sm text-gray-300">Pace</Label>
+              <p className="text-cyan-300 font-semibold text-lg">{pace}</p>
+            </div>
+            <div>
+              <Label className="text-sm text-gray-300">Steps</Label>
+              <p className="text-cyan-300 font-semibold text-lg">{steps}</p>
+            </div>
+            <div>
+              <Label className="text-sm text-gray-300">Calories</Label>
+              <p className="text-cyan-300 font-semibold text-lg">{calories}</p>
+            </div>
           </div>
 
           <div>
-            <Label>Draw Your Route</Label>
-            <MapDrawer onRouteDrawn={(coords) => setRoute(coords)} />
+            <Label className="text-white font-medium">Live Route</Label>
+            <div className="rounded-xl overflow-hidden border bg-white/5 backdrop-blur">
+              <LiveMapTracker tracking={isTracking} route={route} setRoute={setRoute} />
+            </div>
             {route.length > 0 && (
-              <p className="mt-2 text-sm text-green-700">
+              <p className="mt-2 text-sm text-green-300">
                 ✅ Route captured with {route.length} points
               </p>
             )}
           </div>
 
-          <Button
-            type="submit"
-            className="bg-blue-600 text-white hover:bg-blue-700 mt-4"
-            disabled={!isFormValid}
-          >
-            Submit Activity
-          </Button>
+         <div className="flex flex-wrap gap-3 w-full mt-4">
+ {!isTracking ? (
+  <div className="space-y-2">
+    <Button
+      type="button"
+      className="flex-1 min-w-[120px] h-11 rounded-xl bg-gradient-to-r from-cyan-500 to-pink-500 text-white"
+      disabled={hasLocationPermission === false}
+      onClick={() => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const { latitude, longitude } = pos.coords;
+            setRoute([[latitude, longitude]]);
+            setIsTracking(true);
+            setStartTime(new Date());
+            setDate(new Date().toISOString());
+            toast.success("📍 Started tracking!");
+          },
+          (err) => {
+  console.error("Location error:", err);
+  if (err.code === 1) {
+    toast.error("❌ Location access denied by user.");
+    setHasLocationPermission(false);
+  } else if (err.code === 2) {
+    toast.error("📡 Location unavailable. Please enable GPS.");
+  } else if (err.code === 3) {
+    toast.error("⌛ Location request timed out.");
+  } else {
+    toast.error("⚠️ Unknown location error.");
+  }
+}
+
+        );
+      }}
+    >
+      Start
+    </Button>
+
+    {hasLocationPermission === false && (
+      <p className="text-red-500 text-sm">
+        ❌ Location permission denied. Please enable GPS to use tracking.
+      </p>
+    )}
+  </div>
+) : (
+  <>
+    <div className="space-y-2">
+      <Button
+        type="button"
+        className="flex-1 min-w-[120px] h-11 rounded-xl bg-yellow-500 text-white"
+        disabled={hasLocationPermission === false}
+        onClick={() => {
+          if (!isPaused) {
+            elapsedBeforePause.current = duration;
+            setIsPaused(true);
+            toast.info("⏸️ Tracking paused");
+          } else {
+            setStartTime(new Date());
+            setIsPaused(false);
+            toast.success("▶️ Tracking resumed");
+          }
+        }}
+      >
+        {isPaused ? "Resume" : "Pause"}
+      </Button>
+
+      {hasLocationPermission === false && (
+        <p className="text-red-500 text-sm">
+          ❌ Location permission denied. Please enable GPS to use tracking.
+        </p>
+      )}
+    </div>
+
+    <Button
+      type="submit"
+      className="flex-1 min-w-[120px] h-11 rounded-xl bg-red-500 text-white"
+      disabled={hasLocationPermission === false}
+    >
+      Stop & Save
+    </Button>
+  </>
+)}
+
+<Button
+  type="button"
+  className="flex-1 min-w-[120px] h-11 rounded-xl bg-white/10 text-white border border-white/20"
+  onClick={resetForm}
+>
+  Reset
+</Button>
+
+</div>
+
         </form>
       </div>
     </div>

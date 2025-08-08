@@ -34,6 +34,15 @@ const activitySchema = new mongoose.Schema({
     type: [[Number]], // array of [lat, lng]
     required: true,
   },
+  steps: {
+    type: Number,
+    required: true,
+  },
+  calories: {
+    type: Number,
+    required: true,
+  }
+
 }, { timestamps: true });
 
 export const Activity = mongoose.models.Activity || mongoose.model("Activity", activitySchema);

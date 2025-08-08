@@ -217,3 +217,7 @@
   color: #22d3ee; /* cyan-400 */
   opacity: 1;
 }
+
+.drop-shadow-glow {
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.4), 0 0 12px rgba(164, 115, 255, 0.4);
+}

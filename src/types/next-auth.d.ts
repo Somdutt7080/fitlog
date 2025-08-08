@@ -1,29 +1,38 @@
-// src/types/next-auth.d.ts
-
 import NextAuth from "next-auth";
-import { JWT } from "next-auth/jwt";
 
 declare module "next-auth" {
   interface Session {
     user: {
       [x: string]: string;
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
-      id?: string;
-      role?: "admin" | "user"; // ✅ Add this line
+      gender: string;
+      id: string;
+      email: string;
+      name: string;
+      role: "user" | "admin";
+      height?: number;
+      weight?: number;
     };
   }
 
   interface User {
     id: string;
-    role?: "admin" | "user"; // ✅ Add this line
+    name: string;
+    email: string;
+    role: "user" | "admin";
+    gender?: string;
+    dateOfBirth?: string;
+    height?: number;
+    weight?: number;
   }
-}
 
-declare module "next-auth/jwt" {
   interface JWT {
-    id?: string;
-    role?: "admin" | "user"; // ✅ Add this line
+    id: string;
+    name: string;
+    email: string;
+    role: "user" | "admin";
+    gender?: string;
+    dateOfBirth?: string;
+    height?: number;
+    weight?: number;
   }
 }

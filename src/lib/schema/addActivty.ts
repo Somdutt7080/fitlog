@@ -26,4 +26,12 @@ export const ActivitySchema = z.object({
   pace: z.string(),
 
   route: z.array(z.tuple([z.number(), z.number()])),
+
+  steps: z
+    .number()
+    .min(0, "Steps must be 0 or more"),
+
+  calories: z
+    .number()
+    .min(0, "Calories must be 0 or more"),
 });

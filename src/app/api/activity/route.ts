@@ -12,109 +12,94 @@ function getISTDate(): Date {
   return new Date(now.getTime() + offsetInMs);
 }
 
-function getTimeBlock(hour: number): 1 | 2 | 3 {
-  if (hour < 8) return 1;
-  if (hour < 16) return 2;
-  return 3;
-}
-
 export async function POST(req: NextRequest) {
   try {
     await dbConnect();
     const session = await getServerSession(authOptions);
 
     if (!session || !session.user?.email) {
-      console.log("❌ Unauthorized request");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const user = await UserModel.findOne({ email: session.user.email });
     if (!user) {
-      console.log("❌ User not found in DB");
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     const body = await req.json();
-    const { date, ...rest } = body;
+    const { date, steps, calories, distance, duration, route, ...rest } = body;
 
     if (!date) {
-      console.log("❌ No date provided");
       return NextResponse.json({ error: "Date is required" }, { status: 400 });
     }
 
     const istNow = getISTDate();
     const activityDate = new Date(date);
 
-    console.log("🕒 IST Time:", istNow.toISOString());
-    console.log("📅 Client Provided Date:", activityDate.toISOString());
-
     if (activityDate.toDateString() !== istNow.toDateString()) {
-      console.log("❌ Invalid date - not today's date");
       return NextResponse.json({
         error: "You can only log activity for today.",
       }, { status: 400 });
     }
 
-    const startOfDay = new Date(istNow);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(istNow);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const todaysActivities = await Activity.find({
-      userId: user._id,
-      date: { $gte: startOfDay, $lte: endOfDay },
-    });
-
-    console.log("📊 Activities Today:", todaysActivities.length);
-    todaysActivities.forEach((a, i) =>
-      console.log(`🔹 Activity ${i + 1} at:`, new Date(a.date).toISOString())
-    );
-
-    if (todaysActivities.length >= 3) {
-      console.log("❌ Max 3 activities reached");
-      return NextResponse.json({
-        error: "You’ve reached the max limit of 3 activities for today.",
-      }, { status: 400 });
+    if (activityDate.getTime() > istNow.getTime()) {
+      return NextResponse.json({ error: "Date cannot be in the future." }, { status: 400 });
     }
 
-    const currentHour = istNow.getHours();
-    const currentBlock = getTimeBlock(currentHour);
-    console.log("📦 Current Block:", currentBlock);
-
-    const hasActivityInCurrentBlock = todaysActivities.some((activity: any) => {
-      const activityHour = new Date(activity.date).getHours();
-      const activityBlock = getTimeBlock(activityHour);
-      console.log(`🔍 Checking activity at hour ${activityHour} → block ${activityBlock}`);
-      return activityBlock === currentBlock;
-    });
-
-    if (hasActivityInCurrentBlock) {
-      console.log("❌ Already logged activity in this block");
-      return NextResponse.json({
-        error: `You’ve already logged an activity in this time block (Block ${currentBlock}). Try in the next block.`,
-      }, { status: 400 });
+    // Validation for steps, calories, distance, duration
+    if (typeof steps !== "number" || steps <= 0 || steps > 100000) {
+      return NextResponse.json({ error: "Invalid step count" }, { status: 400 });
     }
 
-    const passedBlocks = currentBlock - 1;
-    const maxAllowed = 3 - passedBlocks;
+    if (typeof calories !== "number" || calories < 0 || calories > 5000) {
+      return NextResponse.json({ error: "Invalid calories value" }, { status: 400 });
+    }
 
-    console.log("⏳ Passed Blocks:", passedBlocks);
-    console.log("✅ Max allowed activities right now:", maxAllowed);
+    if (typeof distance !== "number" || distance <= 0.05 || distance > 100) {
+      return NextResponse.json({ error: "Distance must be valid" }, { status: 400 });
+    }
 
-    if (todaysActivities.length >= maxAllowed) {
-      console.log("❌ Missed earlier blocks, can't log more");
-      return NextResponse.json({
-        error: `You missed earlier time blocks. You can log max ${maxAllowed} activity(ies) now.`,
-      }, { status: 400 });
+    if (typeof duration !== "number" || duration <= 0 || duration > 36000) {
+      return NextResponse.json({ error: "Duration must be valid" }, { status: 400 });
+    }
+
+  //  route-based distance verification
+    if (!Array.isArray(route) || route.length < 2) {
+      return NextResponse.json({ error: "Invalid route data" }, { status: 400 });
+    }
+
+    const toRad = (value: number) => (value * Math.PI) / 180;
+    const haversine = ([lat1, lon1]: number[], [lat2, lon2]: number[]) => {
+      const R = 6371; // km
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    };
+
+    let calculatedDistance = 0;
+    for (let i = 1; i < route.length; i++) {
+      calculatedDistance += haversine(route[i - 1], route[i]);
+    }
+
+    if (Math.abs(calculatedDistance - distance) > 0.05) {
+      return NextResponse.json({ error: "Tampered distance detected." }, { status: 400 });
     }
 
     const newActivity = await Activity.create({
       ...rest,
       date: istNow,
       userId: user._id,
+      steps,
+      calories,
+      distance,
+      duration,
+      route,
     });
 
-    console.log("✅ New Activity Logged:", newActivity._id);
     return NextResponse.json({ success: true, activity: newActivity });
   } catch (err) {
     console.error("POST error:", err);

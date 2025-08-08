@@ -157,17 +157,20 @@ export default function LoginPage() {
                 <div>
                   <Label htmlFor="email">Email Address</Label>
                   <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setFormData((prev) => ({ ...prev, email: value }));
-                      validateField("email", value);
-                    }}
-                    className="h-11 mt-1 w-full rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-cyan-400/40 focus:border-transparent"
-                    placeholder="alex@example.com"
-                  />
+                      id="email"
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setFormData((prev) => ({ ...prev, email: value }));
+                        validateField("email", value);
+                      }}
+                      onBlur={(e) => validateField("email", e.target.value)} // 👈 add this
+                      className="h-11 mt-1 w-full rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-cyan-400/40 focus:border-transparent"
+                      placeholder="alex@example.com"
+/>
+
                   {fieldErrors.email && (
                     <p className="text-sm text-red-400 mt-1">
                       {fieldErrors.email}
@@ -180,15 +183,18 @@ export default function LoginPage() {
                   <Input
                     id="password"
                     type="password"
+                    required
                     value={formData.password}
                     onChange={(e) => {
                       const value = e.target.value;
                       setFormData((prev) => ({ ...prev, password: value }));
                       validateField("password", value);
                     }}
+                    onBlur={(e) => validateField("password", e.target.value)} // 👈 add this
                     className="h-11 mt-1 w-full rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-cyan-400/40 focus:border-transparent"
                     placeholder="••••••••"
-                  />
+                        />
+
                   {fieldErrors.password && (
                     <p className="text-sm text-red-400 mt-1">
                       {fieldErrors.password}

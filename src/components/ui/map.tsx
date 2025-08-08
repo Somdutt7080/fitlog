@@ -1,88 +1,81 @@
+// components/LiveMapTracker.tsx
 "use client";
 
-import { useEffect, useRef } from "react";
-import { MapContainer, TileLayer, useMap } from "react-leaflet";
-import L from "leaflet";
+import { MapContainer, TileLayer, Polyline, useMap } from "react-leaflet";
+import { useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
-import "leaflet-draw/dist/leaflet.draw.css";
-import "leaflet-draw";
 
-interface MapDrawerProps {
-  onRouteDrawn?: (coords: [number, number][]) => void;
-}
-
-function MapLogic({ onRouteDrawn }: MapDrawerProps) {
+function ChangeView({ center }: { center: [number, number] }) {
   const map = useMap();
-  const drawnItems = useRef(new L.FeatureGroup()).current;
 
   useEffect(() => {
-    map.addLayer(drawnItems);
-
-    const drawControl = new L.Control.Draw({
-      draw: {
-        polygon: false,
-        circle: false,
-        rectangle: false,
-        circlemarker: false,
-        marker: false,
-        polyline: {
-          shapeOptions: {
-            color: "#e00126ff",
-            weight: 9,
-          },
-        },
-      },
-      edit: {
-        featureGroup: drawnItems,
-      },
-    });
-
-    map.addControl(drawControl);
-
-    map.on(L.Draw.Event.CREATED, (e: any) => {
-      const layer = e.layer;
-
-      // Clear previous layers (only one route allowed)
-      drawnItems.clearLayers();
-      drawnItems.addLayer(layer);
-
-      // ✅ FIXED: For polylines, getLatLngs() returns a flat array
-      const latlngs: [number, number][] = layer
-        .getLatLngs()
-        .map((point: L.LatLng) => [point.lat, point.lng]);
-
-      console.log("✅ Route drawn:", latlngs);
-      onRouteDrawn?.(latlngs);
-    });
-
-    return () => {
-      map.off();
-      map.removeControl(drawControl);
-    };
-  }, [map, onRouteDrawn]);
+    if (center) {
+      map.flyTo(center, 16, {
+        duration: 1.5, // 👈 smooth zoom transition
+      });
+    }
+  }, [center, map]);
 
   return null;
 }
 
-export default function MapDrawer({ onRouteDrawn }: MapDrawerProps) {
+export default function LiveMapTracker({
+  tracking,
+  route,
+  setRoute,
+}: {
+  tracking: boolean;
+  route: [number, number][];
+  setRoute: React.Dispatch<React.SetStateAction<[number, number][]>>;
+}) {
+  const [position, setPosition] = useState<[number, number]>([28.6139, 77.2090]); // default to Delhi
+  const watchIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!tracking) {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      return;
+    }
+
+    if (navigator.geolocation) {
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          const latlng: [number, number] = [
+            pos.coords.latitude,
+            pos.coords.longitude,
+          ];
+
+          // Update position for map center
+          setPosition(latlng);
+
+          // Update route with new location
+          setRoute((prev) => [...prev, latlng]);
+        },
+        (err) => console.error("Geolocation error:", err),
+        { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+      );
+    }
+
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+  }, [tracking, setRoute]);
+
   return (
     <div className="h-64 w-full rounded-xl overflow-hidden">
-      <MapContainer
-        center={[28.6139, 77.209]} // Default to New Delhi
-        zoom={13}
-        style={{ height: "100%", width: "100%" }}
-      >
+      <MapContainer center={position} zoom={16} style={{ height: "100%", width: "100%" }}>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
+          attribution="© OpenStreetMap contributors"
         />
-        <MapLogic onRouteDrawn={onRouteDrawn} />
+        <ChangeView center={position} />
+        {route.length > 1 && <Polyline positions={route} color="#e00126" weight={6} />}
       </MapContainer>
-
-      {/* Optional helper text for user */}
-      <p className="text-xs text-gray-500 mt-2">
-        ✍️ Click on the map to draw your route. Double-click or press <kbd>Esc</kbd> to finish.
-      </p>
     </div>
   );
 }

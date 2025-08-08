@@ -31,17 +31,82 @@ export default function SignupPage() {
   const [fieldErrors, setFieldErrors] = useState<{ [k: string]: string }>({});
   const [error, setError] = useState('');
 
-  // ---- Helpers
-  const onChange =
-    (name: keyof typeof formData) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      const value =
-        e.target.type === 'checkbox'
-          ? (e.target as HTMLInputElement).checked
-          : e.target.value;
-      setFormData((prev) => ({ ...prev, [name]: value as any }));
-    };
 
+  // ---- Helpers
+ const onChange =
+  (name: keyof typeof formData) =>
+  (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const value =
+      e.target.type === 'checkbox'
+        ? (e.target as HTMLInputElement).checked
+        : e.target.value;
+
+    setFormData((prev) => {
+      const updated = { ...prev, [name]: value as any };
+
+      // 🔹 Real-time validate after updating formData
+      const dataForSchema = {
+        ...updated,
+        dateOfBirth: updated.dob,
+        height: updated.height,
+        weight: updated.weight,
+      };
+
+      const result = userRegisterSchema.safeParse(dataForSchema);
+      if (!result.success) {
+        const issue = result.error.issues.find(
+          (iss) =>
+            iss.path[0] === name ||
+            (name === 'dob' && iss.path[0] === 'dateOfBirth')
+        );
+
+        setFieldErrors((prevErrs) => ({
+          ...prevErrs,
+          [name]: issue?.message || '',
+        }));
+      } else {
+        setFieldErrors((prevErrs) => {
+          const newErrs = { ...prevErrs };
+          delete newErrs[name];
+          return newErrs;
+        });
+      }
+
+      return updated;
+    });
+  };
+
+  const validateField = (name: keyof typeof formData) => {
+  const dataForSchema = {
+    ...formData,
+    dateOfBirth: formData.dob,
+    height: formData.height,
+    weight: formData.weight,
+  };
+
+  const result = userRegisterSchema.safeParse(dataForSchema);
+  if (!result.success) {
+    const issue = result.error.issues.find(
+      (iss) => iss.path[0] === name || (name === 'dob' && iss.path[0] === 'dateOfBirth')
+    );
+    if (issue) {
+      setFieldErrors((prev) => ({ ...prev, [name]: issue.message }));
+    } else {
+      setFieldErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+  } else {
+    // Clear error if no issue
+    setFieldErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors[name];
+      return newErrors;
+    });
+  }
+};
   const validateAll = () => {
     // Map frontend keys to schema keys (convert dob -> dateOfBirth)
     const dataForSchema = {
@@ -158,7 +223,9 @@ export default function SignupPage() {
                   <input
                     type="text"
                     name="fullName"
+                    maxLength={25}
                     value={formData.fullName}
+                    onBlur={() => validateField('fullName')}
                     onChange={onChange('fullName')}
                     required
                     className={cnInput(fieldErrors.fullName)}
